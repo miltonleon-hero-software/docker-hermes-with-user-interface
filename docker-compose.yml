@@ -1,0 +1,37 @@
+services:
+  hermes:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes
+    restart: unless-stopped
+    command: gateway run
+
+    ports:
+      - "8642:8642"   # OpenAI-compatible API  (auth: Bearer ${API_SERVER_KEY})
+      - "9119:9119"   # Web dashboard          (auth: basic user/pass)
+
+    # All Hermes state lives here: config, .env, sessions, memories, skills, logs.
+    volumes:
+      - ./data:/opt/data
+
+    # Secrets come from .env (gitignored).
+    env_file:
+      - .env
+
+    environment:
+      # --- Web dashboard ---
+      - HERMES_DASHBOARD=1
+
+      # --- OpenAI-compatible API server ---
+      - API_SERVER_ENABLED=true
+      - API_SERVER_HOST=0.0.0.0
+      - API_SERVER_CORS_ORIGINS=*
+
+    # Playwright/browser tools need shared memory.
+    shm_size: "1g"
+
+    # Recommended resource ceiling for a laptop.
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: "2.0"

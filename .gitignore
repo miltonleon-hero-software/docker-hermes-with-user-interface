@@ -1,0 +1,16 @@
+# ─── Secrets — never commit ───────────────────────────────
+# Ignore every .env variant (.env, .env.local, .env.bak, .env.*) …
+.env
+.env.*
+# … but DO keep the safe template.
+!.env.example
+
+# ─── Hermes runtime state (config, sessions, memories, skills, logs) ───
+# May contain API keys (data/.env), conversation history, and PII.
+data/
+
+# ─── OS / editor noise ───
+.DS_Store
+*.log
+*.bak
+*.tmp
