@@ -70,17 +70,30 @@ curl -s -o /dev/null -w "%{http_code}\n" \
 
 ## Ports
 
-- `9119` — web dashboard (basic auth: user/pass from `.env`). **Open `/login`, not `/`.**
+- `9119` — web dashboard (basic auth: user/pass from `.env`)
 - `8642` — OpenAI-compatible API (Bearer `API_SERVER_KEY` from `.env`)
 
-## Known issue: dashboard root 500
+## Patched: dashboard root redirect bug
 
-With basic auth and a single provider, Hermes' auto-SSO middleware redirects the bare
-root `/` to `/auth/login?provider=basic`, which 500s (it assumes an OAuth flow the
-password-only provider doesn't implement). **Workaround: use `http://localhost:9119/login`**
-— it renders the password form, login succeeds, and the dashboard then loads at `/`
-normally. This is upstream Hermes behavior, not a misconfiguration; don't try to "fix" it
-by changing our config. The API on `8642` is unaffected.
+**Upstream bug:** with a single password-only auth provider, Hermes' "auto-SSO"
+middleware redirects the bare root `/` to `/auth/login?provider=basic` — an OAuth-only
+route that returns HTTP 500 for password auth. First visit lands on a broken page; a
+refresh then works (a loop-guard cookie gets set on the failed redirect).
+
+**Our fix:** `patches/cont-init/99-login-redirect-fix` is mounted into the container's
+s6 `/etc/cont-init.d/` and runs at startup, before the gateway imports the module. It
+makes a password-capable single provider return early from the auto-SSO path, so the
+middleware falls through to the normal login form:
+
+```
+"/"  ->  302  ->  /login?next=%2F   (works on the first visit)
+```
+
+The patch is idempotent (marker `HERMES_LOGIN_FIX`) and non-fatal: if a future image
+changes the code, the anchor won't match and it's silently skipped (boot continues, you'd
+just be back to needing `/login` directly). Verify it ran with
+`docker compose logs hermes | grep login-fix` (expect `[login-fix] applied`). The API on
+`8642` is unaffected by all of this.
 
 ## Gotchas
 

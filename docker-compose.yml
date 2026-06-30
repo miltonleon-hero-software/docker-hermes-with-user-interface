@@ -12,6 +12,9 @@ services:
     # All Hermes state lives here: config, .env, sessions, memories, skills, logs.
     volumes:
       - ./data:/opt/data
+      # Fix the upstream "bare root 500s" dashboard login bug at startup.
+      # See patches/cont-init/99-login-redirect-fix and CLAUDE.md.
+      - ./patches/cont-init/99-login-redirect-fix:/etc/cont-init.d/99-login-redirect-fix:ro
 
     # Secrets come from .env (gitignored).
     env_file:

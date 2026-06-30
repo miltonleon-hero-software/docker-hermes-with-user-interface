@@ -71,12 +71,12 @@ Then run it again — it pulls the image, configures the model, and starts every
 ./setup.sh
 ```
 
-That's it. Open **http://localhost:9119/login** and sign in (credentials are printed at
-the end of `setup.sh`, and stored in `.env`).
+That's it. Open **http://localhost:9119** and sign in (credentials are printed at the end
+of `setup.sh`, and stored in `.env`).
 
-> ⚠️ Use the **`/login`** path, not the bare `http://localhost:9119/`. With basic auth,
-> Hermes' root URL hits an upstream redirect bug that returns a 500. `/login` works
-> perfectly — log in there and the dashboard loads normally.
+> ℹ️ Hermes has an upstream bug where the dashboard root 500s on the first visit with
+> basic auth. This project ships a startup patch (`patches/cont-init/99-login-redirect-fix`)
+> that fixes it, so the root redirects cleanly to the login form. No action needed.
 
 > Prefer `make`? `make setup` does the same thing. Run `make help` to see all targets.
 
@@ -101,9 +101,8 @@ Because `.env` and `data/` are **not committed**, anyone cloning the repo just r
 
 ## Using it
 
-**Web dashboard** → http://localhost:9119/login
+**Web dashboard** → http://localhost:9119
 Log in with the username/password in `.env` (`HERMES_DASHBOARD_BASIC_AUTH_*`).
-(Use `/login`; the bare `/` 500s with basic auth — see the warning above.)
 
 **API** (for an external interface/client):
 ```bash
@@ -152,7 +151,7 @@ docker compose restart
 
 | Port | Service | Auth |
 |------|---------|------|
-| `9119` | Web dashboard (open `/login`) | basic auth (user/pass from `.env`) |
+| `9119` | Web dashboard | basic auth (user/pass from `.env`) |
 | `8642` | OpenAI-compatible API | Bearer `API_SERVER_KEY` from `.env` |
 
 ## Security notes

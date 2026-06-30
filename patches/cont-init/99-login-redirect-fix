@@ -1,0 +1,46 @@
+#!/bin/sh
+# ── Hermes dashboard login-redirect fix (s6 cont-init) ───────────────────
+# Upstream bug: with a single password-only auth provider (our basic-auth
+# setup), the dashboard middleware's "auto-SSO" shortcut redirects the bare
+# root "/" to /auth/login?provider=basic — an OAuth-only route that returns
+# HTTP 500 for password auth. The result: the first visit to the dashboard
+# lands on a broken page (a refresh then works, because a loop-guard cookie
+# gets set). See CLAUDE.md "Known issue".
+#
+# This patch makes a password-capable single provider return early from the
+# auto-SSO path, so the middleware falls through to the normal /login form:
+#     "/"  ->  302  ->  /login?next=%2F   (works on the first try)
+#
+# It is mounted into /etc/cont-init.d/ and runs once at container start,
+# BEFORE the gateway/dashboard process imports the module. Idempotent
+# (marker-guarded) and non-fatal: if a future image changes the code, the
+# anchor won't match and the patch is silently skipped — boot continues.
+
+F=/opt/hermes/hermes_cli/dashboard_auth/middleware.py
+PY=/opt/hermes/.venv/bin/python3
+[ -x "$PY" ] || PY=python3
+
+if [ -f "$F" ]; then
+  "$PY" - "$F" <<'PYEOF' || echo "[login-fix] patch errored — skipping (non-fatal)"
+import sys
+path = sys.argv[1]
+src = open(path, encoding="utf-8").read()
+if "HERMES_LOGIN_FIX" in src:
+    print("[login-fix] already applied"); raise SystemExit(0)
+anchor = "    provider = providers[0]\n    prefix = prefix_from_request(request)\n"
+if anchor not in src:
+    print("[login-fix] anchor not found (upstream changed) — skipping"); raise SystemExit(0)
+inject = (
+    "    provider = providers[0]\n"
+    "    if getattr(provider, 'supports_password', False):  # HERMES_LOGIN_FIX\n"
+    "        return None  # password providers use the /login form, not the OAuth redirect\n"
+    "    prefix = prefix_from_request(request)\n"
+)
+open(path, "w", encoding="utf-8").write(src.replace(anchor, inject, 1))
+print("[login-fix] applied")
+PYEOF
+  # Drop any stale bytecode so the edited source is recompiled on import.
+  rm -f /opt/hermes/hermes_cli/dashboard_auth/__pycache__/middleware.*.pyc 2>/dev/null || true
+fi
+
+exit 0

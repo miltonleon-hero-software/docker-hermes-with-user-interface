@@ -89,11 +89,8 @@ cat <<EOF
 
 $(ok "Hermes is running.")
 
-  Web dashboard : http://localhost:9119/login   (login: $USER / $PASS)
-  API endpoint  : http://localhost:8642          (Bearer token = API_SERVER_KEY in .env)
-
-  NOTE: open the dashboard at /login  — the bare root (/) hits an upstream
-        Hermes redirect bug (500) when using basic auth. /login works fine.
+  Web dashboard : http://localhost:9119   (login: $USER / $PASS)
+  API endpoint  : http://localhost:8642   (Bearer token = API_SERVER_KEY in .env)
 
   Logs : docker compose logs -f
   Chat : docker compose run --rm hermes chat
